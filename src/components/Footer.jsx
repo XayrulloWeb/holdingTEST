@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 import { projectInfo } from '../data/projectContent';
 import { buildTelHref, buildMailHref } from '../utils/links';
+import Logo from './Logo';
 
 export default function Footer() {
   const sectionRef = useRef(null);
@@ -16,6 +17,7 @@ export default function Footer() {
       className="w-full py-24 md:py-32 px-6 bg-brand-bg text-brand-light border-t border-white/5"
     >
       <div className="max-w-7xl mx-auto flex flex-col items-center text-center">
+        <Logo size={44} withWordmark={false} className="mb-4" />
         <span className="font-display text-2xl tracking-[0.3em] uppercase text-brand-light mb-3">
           HOLDING
         </span>
