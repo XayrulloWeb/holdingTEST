@@ -1,10 +1,11 @@
 import { useRef } from 'react';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 import { projectInfo } from '../data/projectContent';
+import SectionHeading from './SectionHeading';
 
 /**
- * Formats a `Distance` object into a short human-readable Russian string,
- * e.g. `{ value: 300, unit: 'm' }` -> "300 м", `{ value: 5, unit: 'min' }` -> "5 мин".
+ * Форматирует объект Distance в короткую строку:
+ * `{ value: 300, unit: 'm' }` -> "300 м", `{ value: 5, unit: 'min' }` -> "5 мин".
  *
  * @param {{ value: number, unit: 'm'|'min' }} distance
  * @returns {string}
@@ -21,9 +22,7 @@ export default function Infrastructure() {
   const items = Array.isArray(infrastructure) ? infrastructure : [];
   const hasItems = items.length > 0;
 
-  // Stable array of refs (one per infrastructure item), created once and
-  // reused across re-renders so useScrollReveal doesn't tear down/recreate
-  // its ScrollTrigger.
+  // Стабильный массив рефов (по одному на объект инфраструктуры).
   const itemRefsContainer = useRef([]);
   if (itemRefsContainer.current.length !== items.length) {
     itemRefsContainer.current = Array.from(
@@ -39,27 +38,37 @@ export default function Infrastructure() {
     <section
       id="infrastructure"
       ref={sectionRef}
-      className="w-full py-24 px-6 bg-brand-bg text-brand-light border-t border-white/5"
+      className="w-full py-28 md:py-40 px-6 bg-brand-bg text-brand-light border-t border-white/5"
     >
-      <div className="max-w-7xl mx-auto text-center">
-        <h2 className="text-sm tracking-widest text-brand-gold uppercase mb-8">Инфраструктура</h2>
+      <div className="max-w-7xl mx-auto">
+        <SectionHeading
+          eyebrow="Инфраструктура"
+          title="Всё необходимое — в шаговой доступности"
+          subtitle="Образование, здоровье, отдых и сервис рядом с домом, чтобы каждый день был удобным."
+        />
 
         {hasItems ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-12 text-left">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-16">
             {items.map((item, index) => (
-              <div
+              <article
                 key={`${item.category}-${item.name}`}
                 ref={itemRefs[index]}
-                className="p-6 bg-brand-gray/10 border border-brand-gold/20 rounded-lg hover:border-brand-gold/50 transition-colors duration-300"
+                className="card-premium group p-7 flex items-start justify-between gap-4"
               >
-                <span className="text-xs tracking-widest text-brand-gold uppercase">{item.category}</span>
-                <h3 className="mt-3 text-lg font-light text-brand-gold-light">{item.name}</h3>
-                <p className="mt-2 text-brand-gray">{formatDistance(item.distance)}</p>
-              </div>
+                <div>
+                  <span className="eyebrow">{item.category}</span>
+                  <h3 className="font-display text-lg font-light text-brand-gold-light mt-3">
+                    {item.name}
+                  </h3>
+                </div>
+                <span className="shrink-0 mt-1 text-sm text-brand-gold whitespace-nowrap font-light">
+                  {formatDistance(item.distance)}
+                </span>
+              </article>
             ))}
           </div>
         ) : (
-          <p className="text-xl md:text-2xl font-light text-brand-gray mt-12">
+          <p className="text-center text-lg md:text-xl font-light text-brand-gray mt-16">
             Информация об инфраструктуре уточняется
           </p>
         )}

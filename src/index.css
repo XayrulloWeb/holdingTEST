@@ -2,11 +2,13 @@
 
 @theme {
   --color-brand-bg: #0B0D10;
+  --color-brand-surface: #111418;
   --color-brand-light: #F3F0EA;
   --color-brand-gold: #C7A36A;
   --color-brand-gold-light: #E0C18A;
   --color-brand-gray: #A6A19A;
-  --font-sans: "Inter", "Roboto", sans-serif;
+  --font-sans: "Josefin Sans", "Inter", "Roboto", sans-serif;
+  --font-display: "Cinzel", "Playfair Display", serif;
 }
 
 body {
@@ -15,14 +17,67 @@ body {
   margin: 0;
   font-family: var(--font-sans);
   overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Custom utility for glassmorphism */
+/* ─── Display / heading typography ─── */
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Eyebrow label above section headings */
+.eyebrow {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--color-brand-gold);
+}
+
+/* Gold gradient text for headline accents */
+.text-gold-gradient {
+  background: linear-gradient(120deg, var(--color-brand-gold-light) 0%, var(--color-brand-gold) 50%, #9c7c48 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Thin gold divider */
+.gold-rule {
+  height: 1px;
+  width: 4rem;
+  background: linear-gradient(90deg, transparent, var(--color-brand-gold), transparent);
+}
+
+/* ─── Glassmorphism (Liquid Glass) ─── */
 .glass {
   background: rgba(243, 240, 234, 0.05);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(243, 240, 234, 0.1);
+}
+
+/* Premium card surface with gold sheen on hover */
+.card-premium {
+  position: relative;
+  background: linear-gradient(160deg, rgba(243, 240, 234, 0.06) 0%, rgba(243, 240, 234, 0.02) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(199, 163, 106, 0.15);
+  border-radius: 1rem;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.4s ease,
+              box-shadow 0.5s ease;
+}
+
+.card-premium:hover {
+  transform: translateY(-6px);
+  border-color: rgba(199, 163, 106, 0.5);
+  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.7),
+              0 0 0 1px rgba(199, 163, 106, 0.1);
 }
 
 .text-gold {
@@ -52,4 +107,14 @@ html.lenis, html.lenis body {
 
 .lenis.lenis-scrolling iframe {
   pointer-events: none;
+}
+
+/* ─── Respect reduced motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  .card-premium {
+    transition: border-color 0.2s ease;
+  }
+  .card-premium:hover {
+    transform: none;
+  }
 }

@@ -2,13 +2,12 @@ import { useRef } from 'react';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 import { useParallax } from '../hooks/useParallax';
 import { projectInfo } from '../data/projectContent';
+import SectionHeading from './SectionHeading';
 
 const PARALLAX_AMPLITUDE = 50;
 
 /**
- * Formats a `Distance` object into a short human-readable Russian string,
- * e.g. `{ value: 300, unit: 'm' }` -> "300 м", `{ value: 5, unit: 'min' }` -> "5 мин".
- *
+ * Форматирует объект Distance в короткую строку.
  * @param {{ value: number, unit: 'm'|'min' }} distance
  * @returns {string}
  */
@@ -32,7 +31,7 @@ export default function Location() {
     <section
       id="location"
       ref={sectionRef}
-      className="relative w-full py-24 px-6 bg-brand-bg text-brand-light border-t border-white/5 overflow-hidden"
+      className="relative w-full py-28 md:py-40 px-6 bg-brand-bg text-brand-light border-t border-white/5 overflow-hidden"
     >
       <div
         ref={backgroundRef}
@@ -51,32 +50,40 @@ export default function Location() {
         <div
           className={
             location?.backgroundImage
-              ? 'absolute inset-0 bg-brand-bg/80'
-              : 'absolute inset-0 bg-gradient-to-br from-brand-bg via-brand-gray/20 to-brand-bg'
+              ? 'absolute inset-0 bg-brand-bg/85'
+              : 'absolute inset-0 bg-gradient-to-br from-brand-bg via-brand-surface to-brand-bg'
           }
         />
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto">
-        <h2 className="text-sm tracking-widest text-brand-gold uppercase mb-8 text-center">Локация</h2>
+        <SectionHeading
+          eyebrow="Локация"
+          title="В сердце новой географии города"
+          align="left"
+        />
 
-        <div className="grid md:grid-cols-2 gap-12 mt-12 items-start">
+        <div className="grid md:grid-cols-2 gap-12 lg:gap-20 mt-16 items-start">
           <div>
-            <h3 className="text-2xl md:text-3xl font-light text-brand-gold-light mb-4">Адрес</h3>
-            <p className="text-lg text-brand-gray">{location?.address}</p>
+            <span className="eyebrow">Адрес</span>
+            <p className="font-display text-2xl md:text-3xl font-light text-brand-light mt-4 leading-snug">
+              {location?.address}
+            </p>
           </div>
 
           {hasLandmarks && (
             <div>
-              <h3 className="text-2xl md:text-3xl font-light text-brand-gold-light mb-4">Рядом с домом</h3>
-              <ul className="space-y-4">
+              <span className="eyebrow">Рядом с домом</span>
+              <ul className="mt-6 space-y-3">
                 {landmarks.map((landmark) => (
                   <li
                     key={landmark.name}
-                    className="flex items-center justify-between gap-4 p-4 bg-brand-gray/10 border border-brand-gold/20 rounded-lg hover:border-brand-gold/50 transition-colors duration-300"
+                    className="card-premium flex items-center justify-between gap-4 px-5 py-4"
                   >
-                    <span className="text-brand-light">{landmark.name}</span>
-                    <span className="text-brand-gold whitespace-nowrap">{formatDistance(landmark.distance)}</span>
+                    <span className="text-brand-light font-light">{landmark.name}</span>
+                    <span className="text-brand-gold whitespace-nowrap font-light">
+                      {formatDistance(landmark.distance)}
+                    </span>
                   </li>
                 ))}
               </ul>

@@ -74,12 +74,16 @@ export const buildingCallouts = [
   }
 ];
 
-/** @type {LayoutItem[]} */
+/**
+ * @type {LayoutItem[]}
+ * Примечание: изображения — премиальные стоковые интерьеры (Unsplash) как
+ * плейсхолдеры. Замените на реальные рендеры планировок в `/public/media/...`.
+ */
 const layoutsSeed = [
-  { type: "Студия", area: 28.5, rooms: 0, image: "/media/holding/layouts/studio.webp" },
-  { type: "1-комнатная", area: 42.3, rooms: 1, image: "/media/holding/layouts/one-room.webp" },
-  { type: "2-комнатная", area: 61.8, rooms: 2, image: "/media/holding/layouts/two-room.webp" },
-  { type: "3-комнатная", area: 89.4, rooms: 3, image: "/media/holding/layouts/three-room.webp" }
+  { type: "Студия", area: 28.5, rooms: 0, image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=900&q=80" },
+  { type: "1-комнатная", area: 42.3, rooms: 1, image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=900&q=80" },
+  { type: "2-комнатная", area: 61.8, rooms: 2, image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=900&q=80" },
+  { type: "3-комнатная", area: 89.4, rooms: 3, image: "https://images.unsplash.com/photo-1560185007-cde436f6a4d0?auto=format&fit=crop&w=900&q=80" }
 ];
 
 /** @type {InfrastructureItem[]} */
@@ -137,9 +141,12 @@ export const projectInfo = {
     { title: "Премиальные материалы", description: "В отделке фасадов и лобби использованы только натуральные и экологичные материалы." }
   ],
   gallery: [
-    "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=800&q=80"
+    "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1000&q=80",
+    "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1000&q=80",
+    "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1000&q=80",
+    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1000&q=80",
+    "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1000&q=80",
+    "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1000&q=80"
   ],
   layouts: layoutsSeed.filter(isValidLayoutItem),
   infrastructure: infrastructureSeed.filter(isValidInfrastructureItem),
