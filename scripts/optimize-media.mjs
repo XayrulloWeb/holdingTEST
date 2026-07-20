@@ -2,184 +2,234 @@ import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
 
-const SOURCE_EARTH = 'c:/Users/user/Desktop/holding/footage';
-const SOURCE_HOLDING = 'c:/Users/user/Desktop/holding/holdingIMG/upscayl_png_upscayl-lite-4x_4x';
+const ROOT = process.cwd();
 
-const TARGET_EARTH_DESKTOP = 'public/media/earth/desktop';
-const TARGET_EARTH_MOBILE = 'public/media/earth/mobile';
-const TARGET_HOLDING_DESKTOP = 'public/media/holding/desktop';
-const TARGET_HOLDING_MOBILE = 'public/media/holding/mobile';
+const SOURCE_EARTH = path.resolve(ROOT, 'footage');
+const SOURCE_HOLDING = path.resolve(ROOT, 'holdingIMG/upscayl_png_upscayl-lite-4x_4x');
 
-const MANIFEST_FILE = 'src/data/mediaManifest.js';
+const TARGETS = {
+  earth: {
+    desktop: path.resolve(ROOT, 'public/media/earth/desktop'),
+    mobile: path.resolve(ROOT, 'public/media/earth/mobile'),
+  },
+  holding: {
+    desktop: path.resolve(ROOT, 'public/media/holding/desktop'),
+    mobile: path.resolve(ROOT, 'public/media/holding/mobile'),
+  },
+};
 
-// Settings for Earth
-const EARTH_DESKTOP_MAX_WIDTH = 1440;
-const EARTH_DESKTOP_QUALITY = 84;
-const EARTH_MOBILE_MAX_WIDTH = 1080;
-const EARTH_MOBILE_QUALITY = 82;
+const MANIFEST_FILE = path.resolve(ROOT, 'src/data/mediaManifest.js');
+const FORMAT = getArgValue('--format') || process.env.IMAGE_FORMAT || 'webp';
 
-// Settings for Holding
-const HOLDING_DESKTOP_MAX_WIDTH = 1920;
-const HOLDING_DESKTOP_QUALITY = 88;
-const HOLDING_MOBILE_MAX_WIDTH = 1080;
-const HOLDING_MOBILE_QUALITY = 84;
+const FORMAT_OPTIONS = {
+  webp: {
+    extension: 'webp',
+    desktop: { quality: 84 },
+    mobile: { quality: 82 },
+  },
+  avif: {
+    extension: 'avif',
+    desktop: { quality: 52, effort: 6 },
+    mobile: { quality: 48, effort: 6 },
+  },
+};
+
+const SEQUENCES = [
+  {
+    key: 'earth',
+    label: 'Earth footage',
+    source: SOURCE_EARTH,
+    desktopWidth: 1440,
+    mobileWidth: 1080,
+    mobileEverySecondFrame: true,
+  },
+  {
+    key: 'holding',
+    label: 'Holding footage',
+    source: SOURCE_HOLDING,
+    desktopWidth: 1920,
+    mobileWidth: 1080,
+    mobileEverySecondFrame: true,
+  },
+];
+
+function getArgValue(name) {
+  const arg = process.argv.find((item) => item.startsWith(`${name}=`));
+  return arg ? arg.split('=').slice(1).join('=').trim() : null;
+}
 
 function ensureDirExists(dir) {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
 function getFilesNaturalSort(dir) {
-    if (!fs.existsSync(dir)) return [];
-    const files = fs.readdirSync(dir).filter(f => f.match(/\.(png|jpe?g)$/i));
-    const validFiles = files.filter(f => {
-        const stat = fs.statSync(path.join(dir, f));
-        return stat.size > 0;
-    });
-    return validFiles.sort((a, b) => {
-        return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
-    });
+  if (!fs.existsSync(dir)) return [];
+
+  return fs.readdirSync(dir)
+    .filter((file) => /\.(png|jpe?g|tiff?)$/i.test(file))
+    .filter((file) => fs.statSync(path.join(dir, file)).size > 0)
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 }
 
 function analyzeSequence(files, name) {
-    console.log(`\n--- Analysis: ${name} ---`);
-    console.log(`Total frames found: ${files.length}`);
-    if (files.length === 0) return;
-    console.log(`First frame: ${files[0]}`);
-    console.log(`Last frame: ${files[files.length - 1]}`);
-    
-    // Attempt to find missing frames based on extracted number
-    const numbers = files.map(f => {
-        const match = f.match(/\d+/g);
-        return match ? parseInt(match[match.length - 1], 10) : null;
-    }).filter(n => n !== null);
+  console.log(`\n--- Analysis: ${name} ---`);
+  console.log(`Total source frames: ${files.length}`);
+  if (!files.length) return;
 
-    if (numbers.length > 1) {
-        const missing = [];
-        for (let i = numbers[0]; i <= numbers[numbers.length - 1]; i++) {
-            if (!numbers.includes(i)) {
-                missing.push(i);
-            }
-        }
-        if (missing.length > 0) {
-            console.log(`Missing frame numbers: ${missing.join(', ')}`);
-        } else {
-            console.log(`No missing frame numbers detected in sequence.`);
-        }
-    }
+  console.log(`First frame: ${files[0]}`);
+  console.log(`Last frame: ${files[files.length - 1]}`);
+
+  const numbers = files
+    .map((file) => {
+      const match = file.match(/\d+/g);
+      return match ? Number.parseInt(match.at(-1), 10) : null;
+    })
+    .filter((value) => value !== null);
+
+  if (numbers.length <= 1) return;
+
+  const existing = new Set(numbers);
+  const missing = [];
+  for (let i = numbers[0]; i <= numbers.at(-1); i += 1) {
+    if (!existing.has(i)) missing.push(i);
+  }
+
+  console.log(missing.length ? `Missing frame numbers: ${missing.join(', ')}` : 'No missing frame numbers detected.');
 }
 
-async function getDirSize(dir) {
-    let size = 0;
-    const files = fs.readdirSync(dir);
-    for (const file of files) {
-        const stat = fs.statSync(path.join(dir, file));
-        size += stat.size;
-    }
-    return size;
+async function getDirSize(dir, extension) {
+  if (!fs.existsSync(dir)) return 0;
+
+  let size = 0;
+  for (const file of fs.readdirSync(dir)) {
+    if (extension && !file.endsWith(`.${extension}`)) continue;
+    const target = path.join(dir, file);
+    if (fs.statSync(target).isFile()) size += fs.statSync(target).size;
+  }
+  return size;
 }
 
 function formatSize(bytes) {
-    return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
 }
 
-async function processSequence(sourceDir, files, targetDesktop, targetMobile, isMobileEverySecondFrame, config) {
-    ensureDirExists(targetDesktop);
-    ensureDirExists(targetMobile);
+function toPublicPath(absolutePath) {
+  return absolutePath
+    .replace(path.resolve(ROOT, 'public'), '')
+    .replaceAll(path.sep, '/');
+}
 
-    const desktopFrames = [];
-    const mobileFrames = [];
+async function writeOptimizedFrame(sourcePath, targetPath, width, formatConfig) {
+  const pipeline = sharp(sourcePath).resize({ width, withoutEnlargement: true });
 
-    let totalOriginalSize = 0;
-    
-    // We get the total size first
-    for (let i = 0; i < files.length; i++) {
-        const stat = fs.statSync(path.join(sourceDir, files[i]));
-        totalOriginalSize += stat.size;
+  if (FORMAT === 'avif') {
+    await pipeline.avif(formatConfig).toFile(targetPath);
+    return;
+  }
+
+  await pipeline.webp(formatConfig).toFile(targetPath);
+}
+
+async function processSequence(sequence, files, formatConfig) {
+  const targets = TARGETS[sequence.key];
+  ensureDirExists(targets.desktop);
+  ensureDirExists(targets.mobile);
+
+  const desktopFrames = [];
+  const mobileFrames = [];
+  const extension = formatConfig.extension;
+
+  const originalSize = files.reduce((total, file) => {
+    return total + fs.statSync(path.join(sequence.source, file)).size;
+  }, 0);
+
+  console.log(`Original size: ${formatSize(originalSize)}`);
+
+  for (let i = 0; i < files.length; i += 1) {
+    const file = files[i];
+    const sourcePath = path.join(sequence.source, file);
+    const baseName = path.parse(file).name;
+    const outputName = `${baseName}.${extension}`;
+
+    try {
+      const desktopTarget = path.join(targets.desktop, outputName);
+      await writeOptimizedFrame(
+        sourcePath,
+        desktopTarget,
+        sequence.desktopWidth,
+        formatConfig.desktop,
+      );
+      desktopFrames.push(toPublicPath(desktopTarget));
+
+      const includeMobile = sequence.mobileEverySecondFrame ? i % 2 === 0 : true;
+      if (includeMobile) {
+        const mobileTarget = path.join(targets.mobile, outputName);
+        await writeOptimizedFrame(
+          sourcePath,
+          mobileTarget,
+          sequence.mobileWidth,
+          formatConfig.mobile,
+        );
+        mobileFrames.push(toPublicPath(mobileTarget));
+      }
+    } catch (error) {
+      console.error(`Skipping ${file}: ${error.message}`);
     }
 
-    console.log(`Total original size: ${formatSize(totalOriginalSize)}`);
-
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const sourcePath = path.join(sourceDir, file);
-        const baseName = path.parse(file).name;
-        const webpName = `${baseName}.webp`;
-        
-        const targetDesktopPath = path.join(targetDesktop, webpName);
-        try {
-            // Process desktop
-            await sharp(sourcePath)
-                .resize({ width: config.desktop.width, withoutEnlargement: true })
-                .webp({ quality: config.desktop.quality })
-                .toFile(targetDesktopPath);
-            desktopFrames.push(`/${targetDesktop}/${webpName}`);
-
-            // Process mobile
-            const includeForMobile = isMobileEverySecondFrame ? (i % 2 === 0) : true;
-            if (includeForMobile) {
-                const targetMobilePath = path.join(targetMobile, webpName);
-                await sharp(sourcePath)
-                    .resize({ width: config.mobile.width, withoutEnlargement: true })
-                    .webp({ quality: config.mobile.quality })
-                    .toFile(targetMobilePath);
-                mobileFrames.push(`/${targetMobile}/${webpName}`);
-            }
-        } catch (error) {
-            console.error(`Skipping corrupted file ${file}: ${error.message}`);
-        }
-        
-        if ((i + 1) % 50 === 0) {
-            console.log(`Processed ${i + 1}/${files.length} frames...`);
-        }
+    if ((i + 1) % 50 === 0) {
+      console.log(`Processed ${i + 1}/${files.length} frames...`);
     }
+  }
 
-    const desktopSize = await getDirSize(targetDesktop);
-    const mobileSize = await getDirSize(targetMobile);
-    
-    console.log(`Desktop size: ${formatSize(desktopSize)} (avg: ${formatSize(desktopSize/desktopFrames.length)})`);
-    console.log(`Mobile size: ${formatSize(mobileSize)} (avg: ${formatSize(mobileSize/mobileFrames.length)})`);
+  const desktopSize = await getDirSize(targets.desktop, extension);
+  const mobileSize = await getDirSize(targets.mobile, extension);
 
-    return { desktopFrames, mobileFrames };
+  console.log(`Desktop optimized size: ${formatSize(desktopSize)} (${desktopFrames.length} frames)`);
+  console.log(`Mobile optimized size: ${formatSize(mobileSize)} (${mobileFrames.length} frames)`);
+
+  return { desktopFrames, mobileFrames };
+}
+
+function writeManifest(results) {
+  const manifestContent = `// Auto-generated by scripts/optimize-media.mjs
+export const earthDesktopFrames = ${JSON.stringify(results.earth.desktopFrames, null, 2)};
+export const earthMobileFrames = ${JSON.stringify(results.earth.mobileFrames, null, 2)};
+export const holdingDesktopFrames = ${JSON.stringify(results.holding.desktopFrames, null, 2)};
+export const holdingMobileFrames = ${JSON.stringify(results.holding.mobileFrames, null, 2)};
+`;
+
+  fs.writeFileSync(MANIFEST_FILE, manifestContent);
 }
 
 async function main() {
-    console.log('Starting Media Optimization...');
-    
-    ensureDirExists(path.dirname(MANIFEST_FILE));
+  const formatConfig = FORMAT_OPTIONS[FORMAT];
+  if (!formatConfig) {
+    throw new Error(`Unsupported format "${FORMAT}". Use --format=webp or --format=avif.`);
+  }
 
-    const earthFiles = getFilesNaturalSort(SOURCE_EARTH);
-    const holdingFiles = getFilesNaturalSort(SOURCE_HOLDING);
+  console.log(`Starting media optimization. Output format: ${FORMAT}`);
+  ensureDirExists(path.dirname(MANIFEST_FILE));
 
-    analyzeSequence(earthFiles, 'Earth Footage');
-    analyzeSequence(holdingFiles, 'Holding Footage');
+  const results = {};
 
-    console.log('\nProcessing Earth Footage...');
-    const earthManifest = await processSequence(SOURCE_EARTH, earthFiles, TARGET_EARTH_DESKTOP, TARGET_EARTH_MOBILE, true, {
-        desktop: { width: EARTH_DESKTOP_MAX_WIDTH, quality: EARTH_DESKTOP_QUALITY },
-        mobile: { width: EARTH_MOBILE_MAX_WIDTH, quality: EARTH_MOBILE_QUALITY }
-    });
+  for (const sequence of SEQUENCES) {
+    const files = getFilesNaturalSort(sequence.source);
+    analyzeSequence(files, sequence.label);
 
-    /*
-    console.log('\nProcessing Holding Footage...');
-    const holdingManifest = await processSequence(SOURCE_HOLDING, holdingFiles, TARGET_HOLDING_DESKTOP, TARGET_HOLDING_MOBILE, true, {
-        desktop: { width: HOLDING_DESKTOP_MAX_WIDTH, quality: HOLDING_DESKTOP_QUALITY },
-        mobile: { width: HOLDING_MOBILE_MAX_WIDTH, quality: HOLDING_MOBILE_QUALITY }
-    });
-    */
+    if (!files.length) {
+      results[sequence.key] = { desktopFrames: [], mobileFrames: [] };
+      continue;
+    }
 
-    const manifestContent = `
-// Auto-generated by optimize-media.mjs
-export const earthDesktopFrames = ${JSON.stringify(earthManifest.desktopFrames, null, 2)};
-export const earthMobileFrames = ${JSON.stringify(earthManifest.mobileFrames, null, 2)};
-export const holdingDesktopFrames = []; // Temporarily empty
-export const holdingMobileFrames = []; // Temporarily empty
-`;
+    results[sequence.key] = await processSequence(sequence, files, formatConfig);
+  }
 
-    fs.writeFileSync(MANIFEST_FILE, manifestContent);
-    console.log(`\nManifest written to ${MANIFEST_FILE}`);
-    console.log('Optimization complete!');
+  writeManifest(results);
+  console.log(`\nManifest written to ${MANIFEST_FILE}`);
+  console.log('Optimization complete.');
 }
 
-main().catch(console.error);
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
